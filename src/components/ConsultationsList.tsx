@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
-import { Calendar, Stethoscope, FileText } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar, Stethoscope, FileText, Download } from "lucide-react";
+import { exportConsultationsToPdf } from "@/lib/exportPdf";
+import { toast } from "sonner";
 
 interface Consultation {
   id: string;
@@ -38,6 +41,39 @@ export const ConsultationsList = ({ refreshKey }: { refreshKey: number }) => {
     };
   }, [refreshKey]);
 
+  const handleExport = async () => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      let patientName: string | undefined;
+      if (userData.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", userData.user.id)
+          .maybeSingle();
+        patientName =
+          profile?.full_name?.trim() || userData.user.email || undefined;
+      }
+      exportConsultationsToPdf(items, patientName);
+      toast.success("PDF descargado");
+    } catch (err: any) {
+      toast.error("No se pudo generar el PDF");
+    }
+  };
+
+  const ExportButton = (
+    <div className="px-4 pt-4">
+      <Button
+        onClick={handleExport}
+        disabled={items.length === 0}
+        className="w-full bg-gradient-warm shadow-bubble hover:opacity-95"
+      >
+        <Download className="mr-2 h-4 w-4" />
+        Exportar como PDF
+      </Button>
+    </div>
+  );
+
   if (loading)
     return (
       <p className="text-sm text-muted-foreground p-4">Cargando historial...</p>
@@ -45,18 +81,23 @@ export const ConsultationsList = ({ refreshKey }: { refreshKey: number }) => {
 
   if (items.length === 0)
     return (
-      <div className="p-6 text-center">
-        <FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground/60" />
-        <p className="text-sm text-muted-foreground">
-          Aún no hay consultas guardadas. Cuéntale a MediBot sobre tu última
-          visita médica.
-        </p>
-      </div>
+      <>
+        {ExportButton}
+        <div className="p-6 text-center">
+          <FileText className="mx-auto mb-2 h-8 w-8 text-muted-foreground/60" />
+          <p className="text-sm text-muted-foreground">
+            Aún no hay consultas guardadas. Cuéntale a MediBot sobre tu última
+            visita médica.
+          </p>
+        </div>
+      </>
     );
 
   return (
-    <div className="space-y-3 p-4">
-      {items.map((c) => (
+    <>
+      {ExportButton}
+      <div className="space-y-3 p-4">
+        {items.map((c) => (
         <Card
           key={c.id}
           className="p-4 shadow-soft border-border/50 transition-smooth hover:shadow-bubble"
@@ -99,6 +140,7 @@ export const ConsultationsList = ({ refreshKey }: { refreshKey: number }) => {
           )}
         </Card>
       ))}
-    </div>
+      </div>
+    </>
   );
 };
