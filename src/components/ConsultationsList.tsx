@@ -94,8 +94,10 @@ export const ConsultationsList = ({ refreshKey }: { refreshKey: number }) => {
     );
 
   return (
-    <div className="space-y-3 p-4">
-      {items.map((c) => (
+    <>
+      {ExportButton}
+      <div className="space-y-3 p-4">
+        {items.map((c) => (
         <Card
           key={c.id}
           className="p-4 shadow-soft border-border/50 transition-smooth hover:shadow-bubble"
