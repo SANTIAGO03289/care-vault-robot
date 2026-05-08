@@ -1,191 +1,128 @@
-import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { ChatBubble } from "@/components/ChatBubble";
-import { ConsultationsList } from "@/components/ConsultationsList";
-import { Heart, Send, FileText, LogOut } from "lucide-react";
+import { PoseCalibration } from "@/components/coach/PoseCalibration";
+import { Activity, Dumbbell, Sparkles, Target, Zap } from "lucide-react";
 import { toast } from "sonner";
 
-interface Msg {
-  role: "user" | "assistant";
-  content: string;
-}
-
-const WELCOME: Msg = {
-  role: "assistant",
-  content:
-    "¡Hola! Soy MediBot 💚\n\nPuedo ayudarte a guardar tus consultas médicas. Cuéntame, por ejemplo:\n\n• «Ayer fui al cardiólogo Dr. López, me dijo que tengo la presión un poco alta»\n• «Muéstrame mis últimas consultas»",
-};
+type Stage = "landing" | "calibrate" | "analyze";
 
 const Index = () => {
-  const navigate = useNavigate();
-  const [authChecked, setAuthChecked] = useState(false);
-  const [messages, setMessages] = useState<Msg[]>([WELCOME]);
-  const [input, setInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (!session) navigate("/auth", { replace: true });
-    });
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) navigate("/auth", { replace: true });
-      setAuthChecked(true);
-    });
-    return () => sub.subscription.unsubscribe();
-  }, [navigate]);
-
-  useEffect(() => {
-    scrollRef.current?.scrollTo({
-      top: scrollRef.current.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [messages, sending]);
-
-  const send = async () => {
-    const text = input.trim();
-    if (!text || sending) return;
-    setInput("");
-    const next: Msg[] = [...messages, { role: "user", content: text }];
-    setMessages(next);
-    setSending(true);
-
-    try {
-      const { data, error } = await supabase.functions.invoke("medical-chat", {
-        body: {
-          messages: next.filter((m, i) => !(i === 0 && m === WELCOME)).map(
-            (m) => ({ role: m.role, content: m.content }),
-          ),
-        },
-      });
-      if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
-      const reply = (data as any)?.reply ?? "Hecho.";
-      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
-      setRefreshKey((k) => k + 1);
-    } catch (err: any) {
-      toast.error(err.message ?? "No pude responder ahora mismo");
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "Lo siento, tuve un problema. ¿Puedes intentarlo de nuevo?",
-        },
-      ]);
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const logout = async () => {
-    await supabase.auth.signOut();
-  };
-
-  if (!authChecked) return null;
+  const [stage, setStage] = useState<Stage>("landing");
 
   return (
-    <div className="flex h-screen flex-col">
-      {/* Header */}
-      <header className="flex items-center justify-between border-b border-border/60 bg-card/70 backdrop-blur px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-warm shadow-bubble">
-            <Heart className="h-4 w-4 text-primary-foreground" />
+    <div className="min-h-screen">
+      <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-electric shadow-glow">
+            <Zap className="h-4 w-4 text-primary-foreground" />
           </div>
-          <div>
-            <h1 className="text-base font-bold leading-tight">MediBot</h1>
-            <p className="text-xs text-muted-foreground leading-tight">
-              Tu historial, en buenas manos
+          <div className="leading-tight">
+            <p className="text-sm font-bold tracking-tight">AI Sports Coach</p>
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Pro precision
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="Ver historial">
-                <FileText className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="w-full sm:max-w-md p-0 overflow-y-auto">
-              <SheetHeader className="p-4 border-b">
-                <SheetTitle>Mi historial médico</SheetTitle>
-              </SheetHeader>
-              <ConsultationsList refreshKey={refreshKey} />
-            </SheetContent>
-          </Sheet>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={logout}
-            aria-label="Cerrar sesión"
-          >
-            <LogOut className="h-5 w-5" />
-          </Button>
-        </div>
+        <span className="hidden rounded-full border border-border bg-card/60 px-3 py-1 text-xs text-muted-foreground sm:inline-block">
+          MediaPipe Pose · Real-time
+        </span>
       </header>
 
-      {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6">
-        <div className="mx-auto flex max-w-2xl flex-col gap-4">
-          {messages.map((m, i) => (
-            <ChatBubble key={i} role={m.role} content={m.content} />
-          ))}
-          {sending && (
-            <div className="flex items-center gap-2 pl-10 text-muted-foreground">
-              <span className="h-2 w-2 rounded-full bg-primary animate-pulse-dot" />
-              <span
-                className="h-2 w-2 rounded-full bg-primary animate-pulse-dot"
-                style={{ animationDelay: "0.15s" }}
-              />
-              <span
-                className="h-2 w-2 rounded-full bg-primary animate-pulse-dot"
-                style={{ animationDelay: "0.3s" }}
-              />
+      <main className="mx-auto max-w-6xl px-5 pb-16">
+        {stage === "landing" && (
+          <section className="animate-fade-up">
+            <div className="mx-auto mt-6 max-w-3xl text-center">
+              <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                <Sparkles className="h-3.5 w-3.5" /> Análisis biomecánico en vivo
+              </div>
+              <h1 className="mt-5 text-4xl font-bold leading-tight sm:text-6xl">
+                Tu técnica deportiva,{" "}
+                <span className="text-gradient-electric">analizada con precisión profesional</span>
+              </h1>
+              <p className="mx-auto mt-5 max-w-2xl text-base text-muted-foreground sm:text-lg">
+                Detección corporal en tiempo real con IA. Sentadillas, boxeo y patinaje
+                evaluados como lo haría un entrenador real.
+              </p>
+              <div className="mt-8 flex flex-wrap justify-center gap-3">
+                <Button
+                  size="lg"
+                  onClick={() => setStage("calibrate")}
+                  className="h-12 bg-gradient-electric px-7 text-base font-semibold text-primary-foreground shadow-glow"
+                >
+                  Iniciar calibración
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  onClick={() => toast.info("Disponible muy pronto")}
+                  className="h-12 px-7"
+                >
+                  Ver disciplinas
+                </Button>
+              </div>
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* Composer */}
-      <div className="border-t border-border/60 bg-card/70 backdrop-blur px-4 py-3">
-        <div className="mx-auto flex max-w-2xl items-center gap-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                send();
-              }
-            }}
-            placeholder="Cuéntame sobre tu consulta..."
-            className="rounded-full bg-background"
-            disabled={sending}
-          />
-          <Button
-            onClick={send}
-            disabled={sending || !input.trim()}
-            size="icon"
-            className="h-10 w-10 shrink-0 rounded-full bg-gradient-warm shadow-bubble hover:opacity-95"
-            aria-label="Enviar"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
-        <p className="mx-auto mt-2 max-w-2xl text-center text-[10px] text-muted-foreground">
-          MediBot no sustituye consejo médico profesional.
-        </p>
-      </div>
+            <div className="mx-auto mt-14 grid max-w-5xl gap-4 sm:grid-cols-3">
+              {[
+                { icon: Activity, title: "Tracking estable", desc: "33 puntos clave con suavizado y baja latencia." },
+                { icon: Target, title: "Ángulos reales", desc: "Análisis biomecánico de rodillas, cadera y espalda." },
+                { icon: Dumbbell, title: "Multi-deporte", desc: "Boxeo, sentadillas y patinaje con métricas dedicadas." },
+              ].map((f, i) => (
+                <div
+                  key={i}
+                  className="rounded-2xl border border-border bg-card/60 p-5 shadow-card transition-smooth hover:border-primary/40"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-electric text-primary-foreground">
+                    <f.icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="mt-4 text-lg font-semibold">{f.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{f.desc}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {stage === "calibrate" && (
+          <section className="animate-fade-up mt-2">
+            <div className="mb-6 flex items-end justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-primary">Paso 1 de 2</p>
+                <h2 className="mt-1 text-3xl font-bold">Calibración automática</h2>
+                <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+                  Permite el acceso a la cámara y sigue las indicaciones. Cuando todo esté en
+                  verde verás “Listo para analizar”.
+                </p>
+              </div>
+              <Button variant="ghost" onClick={() => setStage("landing")}>
+                ← Volver
+              </Button>
+            </div>
+            <PoseCalibration
+              onCalibrated={() => {
+                toast.success("Calibración completada");
+                setStage("analyze");
+              }}
+            />
+          </section>
+        )}
+
+        {stage === "analyze" && (
+          <section className="animate-fade-up mt-10 text-center">
+            <h2 className="text-3xl font-bold">¡Listo para analizar!</h2>
+            <p className="mx-auto mt-2 max-w-md text-muted-foreground">
+              El módulo de análisis por disciplina (boxeo, sentadillas, patinaje) llega en el
+              próximo paso.
+            </p>
+            <Button
+              className="mt-6 bg-gradient-electric text-primary-foreground shadow-glow"
+              onClick={() => setStage("calibrate")}
+            >
+              Volver a calibración
+            </Button>
+          </section>
+        )}
+      </main>
     </div>
   );
 };
