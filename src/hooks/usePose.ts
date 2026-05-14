@@ -32,6 +32,35 @@ export function usePose(videoRef: React.RefObject<HTMLVideoElement>, opts: UsePo
 
   useEffect(() => {
     let cancelled = false;
+
+    const loop = () => {
+      const video = videoRef.current;
+      const landmarker = landmarkerRef.current;
+      if (video && landmarker && video.readyState >= 2 && video.currentTime !== lastTimeRef.current) {
+        lastTimeRef.current = video.currentTime;
+        const ts = performance.now();
+        try {
+          const result = landmarker.detectForVideo(video, ts);
+          const raw = result.landmarks?.[0] as Pt[] | undefined;
+          const smoothed = raw ? smootherRef.current.smooth(raw, ts) : null;
+          if (!raw) smootherRef.current.reset();
+          callbackRef.current?.(smoothed, result, video);
+
+          const f = fpsRef.current;
+          f.frames += 1;
+          if (ts - f.last >= 500) {
+            f.value = Math.round((f.frames * 1000) / (ts - f.last));
+            f.frames = 0;
+            f.last = ts;
+            setFps(f.value);
+          }
+        } catch (e) {
+          console.error("pose detect error", e);
+        }
+      }
+      rafRef.current = requestAnimationFrame(loop);
+    };
+
     (async () => {
       try {
         const fileset = await FilesetResolver.forVisionTasks(
@@ -79,35 +108,6 @@ export function usePose(videoRef: React.RefObject<HTMLVideoElement>, opts: UsePo
         setStatus("no-camera");
       }
     })();
-
-    const loop = () => {
-      const video = videoRef.current;
-      const landmarker = landmarkerRef.current;
-      if (video && landmarker && video.readyState >= 2 && video.currentTime !== lastTimeRef.current) {
-        lastTimeRef.current = video.currentTime;
-        const ts = performance.now();
-        try {
-          const result = landmarker.detectForVideo(video, ts);
-          const raw = result.landmarks?.[0] as Pt[] | undefined;
-          const smoothed = raw ? smootherRef.current.smooth(raw, ts) : null;
-          if (!raw) smootherRef.current.reset();
-          callbackRef.current?.(smoothed, result, video);
-
-          // fps
-          const f = fpsRef.current;
-          f.frames += 1;
-          if (ts - f.last >= 500) {
-            f.value = Math.round((f.frames * 1000) / (ts - f.last));
-            f.frames = 0;
-            f.last = ts;
-            setFps(f.value);
-          }
-        } catch (e) {
-          console.error("pose detect error", e);
-        }
-      }
-      rafRef.current = requestAnimationFrame(loop);
-    };
 
     return () => {
       cancelled = true;
