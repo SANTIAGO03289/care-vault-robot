@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Loader2, Camera, Activity } from "lucide-react";
 import { usePose } from "@/hooks/usePose";
 import { drawSkeleton } from "@/lib/drawSkeleton";
