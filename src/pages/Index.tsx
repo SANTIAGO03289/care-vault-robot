@@ -1,13 +1,22 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { PoseCalibration } from "@/components/coach/PoseCalibration";
+import { PoseAnalyzer } from "@/components/coach/PoseAnalyzer";
 import { Activity, Dumbbell, Sparkles, Target, Zap } from "lucide-react";
 import { toast } from "sonner";
+import type { SportKey } from "@/lib/biomechanics";
 
-type Stage = "landing" | "calibrate" | "analyze";
+type Stage = "landing" | "sport" | "calibrate" | "analyze";
+
+const SPORTS: { id: SportKey; label: string; desc: string; icon: typeof Activity }[] = [
+  { id: "squat", label: "Sentadillas", desc: "Profundidad, simetría y espalda neutra.", icon: Dumbbell },
+  { id: "boxing", label: "Boxeo", desc: "Jab, cross, guardia y transferencia de peso.", icon: Target },
+  { id: "skating", label: "Patinaje", desc: "Inclinación, balance y postura aerodinámica.", icon: Activity },
+];
 
 const Index = () => {
   const [stage, setStage] = useState<Stage>("landing");
+  const [sport, setSport] = useState<SportKey>("squat");
 
   return (
     <div className="min-h-screen">
@@ -18,13 +27,11 @@ const Index = () => {
           </div>
           <div className="leading-tight">
             <p className="text-sm font-bold tracking-tight">AI Sports Coach</p>
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              Pro precision
-            </p>
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Pro precision</p>
           </div>
         </div>
         <span className="hidden rounded-full border border-border bg-card/60 px-3 py-1 text-xs text-muted-foreground sm:inline-block">
-          MediaPipe Pose · Real-time
+          MediaPipe Heavy · One Euro · Real-time
         </span>
       </header>
 
@@ -40,38 +47,27 @@ const Index = () => {
                 <span className="text-gradient-electric">analizada con precisión profesional</span>
               </h1>
               <p className="mx-auto mt-5 max-w-2xl text-base text-muted-foreground sm:text-lg">
-                Detección corporal en tiempo real con IA. Sentadillas, boxeo y patinaje
-                evaluados como lo haría un entrenador real.
+                Modelo Heavy de MediaPipe Pose con suavizado One Euro. 33 puntos clave, ángulos
+                articulares reales y puntuación técnica como la de un entrenador profesional.
               </p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
                 <Button
                   size="lg"
-                  onClick={() => setStage("calibrate")}
+                  onClick={() => setStage("sport")}
                   className="h-12 bg-gradient-electric px-7 text-base font-semibold text-primary-foreground shadow-glow"
                 >
-                  Iniciar calibración
-                </Button>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  onClick={() => toast.info("Disponible muy pronto")}
-                  className="h-12 px-7"
-                >
-                  Ver disciplinas
+                  Comenzar análisis
                 </Button>
               </div>
             </div>
 
             <div className="mx-auto mt-14 grid max-w-5xl gap-4 sm:grid-cols-3">
               {[
-                { icon: Activity, title: "Tracking estable", desc: "33 puntos clave con suavizado y baja latencia." },
-                { icon: Target, title: "Ángulos reales", desc: "Análisis biomecánico de rodillas, cadera y espalda." },
+                { icon: Activity, title: "Tracking estable", desc: "33 puntos con One Euro Filter, sin saltos ni jitter." },
+                { icon: Target, title: "Ángulos reales", desc: "Rodilla, cadera, codo y espalda en grados, frame a frame." },
                 { icon: Dumbbell, title: "Multi-deporte", desc: "Boxeo, sentadillas y patinaje con métricas dedicadas." },
               ].map((f, i) => (
-                <div
-                  key={i}
-                  className="rounded-2xl border border-border bg-card/60 p-5 shadow-card transition-smooth hover:border-primary/40"
-                >
+                <div key={i} className="rounded-2xl border border-border bg-card/60 p-5 shadow-card transition-smooth hover:border-primary/40">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-electric text-primary-foreground">
                     <f.icon className="h-5 w-5" />
                   </div>
@@ -83,20 +79,64 @@ const Index = () => {
           </section>
         )}
 
+        {stage === "sport" && (
+          <section className="animate-fade-up mt-2">
+            <div className="mb-6 flex items-end justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-primary">Paso 1 de 3</p>
+                <h2 className="mt-1 text-3xl font-bold">Elige tu disciplina</h2>
+                <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+                  Cada deporte usa métricas y ángulos biomecánicos específicos.
+                </p>
+              </div>
+              <Button variant="ghost" onClick={() => setStage("landing")}>← Volver</Button>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {SPORTS.map((s) => {
+                const active = sport === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => setSport(s.id)}
+                    className={`text-left rounded-2xl border p-5 transition-smooth shadow-card ${
+                      active
+                        ? "border-primary bg-primary/10 shadow-glow"
+                        : "border-border bg-card/60 hover:border-primary/40"
+                    }`}
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-electric text-primary-foreground">
+                      <s.icon className="h-5 w-5" />
+                    </div>
+                    <h3 className="mt-4 text-lg font-semibold">{s.label}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{s.desc}</p>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-6 flex justify-end">
+              <Button
+                size="lg"
+                onClick={() => setStage("calibrate")}
+                className="h-12 bg-gradient-electric px-7 text-base font-semibold text-primary-foreground shadow-glow"
+              >
+                Continuar → Calibración
+              </Button>
+            </div>
+          </section>
+        )}
+
         {stage === "calibrate" && (
           <section className="animate-fade-up mt-2">
             <div className="mb-6 flex items-end justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-widest text-primary">Paso 1 de 2</p>
+                <p className="text-xs uppercase tracking-widest text-primary">Paso 2 de 3</p>
                 <h2 className="mt-1 text-3xl font-bold">Calibración automática</h2>
                 <p className="mt-1 max-w-xl text-sm text-muted-foreground">
                   Permite el acceso a la cámara y sigue las indicaciones. Cuando todo esté en
                   verde verás “Listo para analizar”.
                 </p>
               </div>
-              <Button variant="ghost" onClick={() => setStage("landing")}>
-                ← Volver
-              </Button>
+              <Button variant="ghost" onClick={() => setStage("sport")}>← Cambiar deporte</Button>
             </div>
             <PoseCalibration
               onCalibrated={() => {
@@ -108,18 +148,18 @@ const Index = () => {
         )}
 
         {stage === "analyze" && (
-          <section className="animate-fade-up mt-10 text-center">
-            <h2 className="text-3xl font-bold">¡Listo para analizar!</h2>
-            <p className="mx-auto mt-2 max-w-md text-muted-foreground">
-              El módulo de análisis por disciplina (boxeo, sentadillas, patinaje) llega en el
-              próximo paso.
-            </p>
-            <Button
-              className="mt-6 bg-gradient-electric text-primary-foreground shadow-glow"
-              onClick={() => setStage("calibrate")}
-            >
-              Volver a calibración
-            </Button>
+          <section className="animate-fade-up mt-2">
+            <div className="mb-6 flex items-end justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-primary">Paso 3 de 3</p>
+                <h2 className="mt-1 text-3xl font-bold">Análisis en vivo</h2>
+                <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+                  Métricas, ángulos y feedback técnico en tiempo real.
+                </p>
+              </div>
+              <Button variant="ghost" onClick={() => setStage("calibrate")}>← Recalibrar</Button>
+            </div>
+            <PoseAnalyzer sport={sport} />
           </section>
         )}
       </main>
